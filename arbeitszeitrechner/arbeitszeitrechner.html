@@ -220,7 +220,7 @@
     <div class="result-text" id="ergebnis"><span class="empty-state">Noch keine Berechnung</span></div>
   </div>
 
-  <div class="card">
+  <div class="card" id="progress-card">
     <div class="card-label">Fortschritt</div>
     <div id="main-progress-wrap">
       <div class="progress-header">
@@ -399,8 +399,8 @@ function setProgress(sekunden) {
   fill.style.width = pct.toFixed(1) + '%';
   fill.className = 'progress-fill' + (pct >= 100 ? ' done' : '');
   document.getElementById('progress-pct').innerText = pct.toFixed(0) + '%';
-  // Sobald das Tagesziel erreicht ist, übernimmt der Diamant – der Balken wird überflüssig.
-  document.getElementById('main-progress-wrap').style.display = pct >= 100 ? 'none' : '';
+  // Sobald das Tagesziel erreicht ist, übernimmt der Diamant – die ganze Kachel wird überflüssig.
+  document.getElementById('progress-card').style.display = pct >= 100 ? 'none' : '';
 
   // Ferien-Überzeit Bar
   const ferienWrap = document.getElementById('ferien-bar-wrap');
