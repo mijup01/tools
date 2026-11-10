@@ -123,6 +123,13 @@
     button.primary { background: #4f7fff; border-color: #4f7fff; color: #fff; }
     button.primary:hover { background: #3a6aee; border-color: #3a6aee; color: #fff; }
 
+    .bereinigt-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .flag {
+      font-size: 0.75rem; font-weight: 700; white-space: nowrap;
+      padding: 3px 10px; border-radius: 99px;
+      background: rgba(245,158,11,0.15); color: #b45309; border: 1px solid rgba(245,158,11,0.4);
+    }
+    [data-theme="dark"] .flag { color: #fbbf24; }
     .pause-hint { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
     .pause-hint:empty { display: none; }
 
@@ -404,9 +411,14 @@ function berechneArbeitszeit() {
 
   if (sekundenArray.length % 2 === 0) {
     hideLive();
-    document.getElementById('ergebnis').innerText =
-      `Gearbeitet: ${(totalSekunden / 3600).toFixed(2)} Stunden\n` +
-      `Mit bereinigten Pausen: ${(bereinigteArbeitszeit(sekundenArray) / 3600).toFixed(2)} Stunden`;
+    const bereinigt = bereinigteArbeitszeit(sekundenArray);
+    const abzug = totalSekunden - bereinigt;
+    let html = `<div>Gearbeitet: ${(totalSekunden / 3600).toFixed(2)} Stunden</div>`;
+    if (abzug > 0) {
+      html += `<div class="bereinigt-row"><span>Mit bereinigten Pausen: ${(bereinigt / 3600).toFixed(2)} Stunden</span>` +
+              `<span class="flag">&#128681; &minus;${(abzug / 3600).toFixed(2)}h</span></div>`;
+    }
+    document.getElementById('ergebnis').innerHTML = html;
     setProgress(totalSekunden);
     updateDiamond(totalSekunden);
     return;
