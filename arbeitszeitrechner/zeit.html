@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arbeitszeit</title>
+  <script src="../theme.js"></script>
+  <style>
+    :root { --bg: #f0f2f5; --text: #1a1a2e; }
+    [data-theme="dark"] { --bg: #0f1117; --text: #e0e0e0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #zeit {
+      font-size: 3rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+<div id="zeit">0.00h</div>
+<script>
+  function parseZeiten(text) {
+    return text.trim().split(/\s+/)
+      .map(z => z.replace(/:/g, '').trim())
+      .filter(z => /^\d{4}(\d{2})?$/.test(z))
+      .map(z => {
+        const h = parseInt(z.substring(0, 2), 10);
+        const m = parseInt(z.substring(2, 4), 10);
+        const s = z.length === 6 ? parseInt(z.substring(4, 6), 10) : 0;
+        return h * 3600 + m * 60 + s;
+      });
+  }
+
+  function arbeitszeitSekunden() {
+    const arr = parseZeiten(localStorage.getItem('zeitstempel') || '');
+    let total = 0;
+    for (let i = 0; i < arr.length - 1; i += 2) total += arr[i + 1] - arr[i];
+    if (arr.length % 2 === 1) {
+      const now = new Date();
+      const jetzt = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+      total += Math.max(0, jetzt - arr[arr.length - 1]);
+    }
+    return total;
+  }
+
+  function tick() {
+    document.getElementById('zeit').textContent = (arbeitszeitSekunden() / 3600).toFixed(2) + 'h';
+  }
+  tick();
+  setInterval(tick, 1000);
+</script>
+</body>
+</html>

@@ -123,6 +123,9 @@
     button.primary { background: #4f7fff; border-color: #4f7fff; color: #fff; }
     button.primary:hover { background: #3a6aee; border-color: #3a6aee; color: #fff; }
 
+    .pause-hint { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+    .pause-hint:empty { display: none; }
+
     .result-text { font-size: 1rem; line-height: 1.7; color: var(--text-secondary); white-space: pre-line; }
 
     .live-badge { display: none; align-items: center; gap: 10px; margin-bottom: 8px; }
@@ -213,9 +216,12 @@
     <textarea id="timeInputs" rows="6" placeholder="0600&#10;1230&#10;1259&#10;1700"></textarea>
     <div class="btn-row">
       <button onclick="pauseHinzufuegen()">&#9200; 30 Min Pause</button>
+      <button onclick="pausenkorrektur()">&#9749; Pausenkorrektur</button>
       <button onclick="stempelEntfernen()">&#128465; Löschen</button>
+      <button onclick="nurZeitAnzeigen()">&#129695; Nur Zeit</button>
       <button class="primary" onclick="berechneArbeitszeit()">&#128200; Berechnen</button>
     </div>
+    <div class="pause-hint" id="pause-hint"></div>
   </div>
 
   <div class="card" id="result-card">
@@ -305,6 +311,7 @@ const GOLD_STEP = 600;
 
 function stempelEntfernen() {
   document.getElementById('timeInputs').value = "";
+  document.getElementById('pause-hint').textContent = '';
   document.getElementById('ergebnis').innerHTML = '<span class="empty-state">Noch keine Berechnung</span>';
   hideLive();
   setProgress(0);
@@ -317,17 +324,81 @@ function pauseHinzufuegen() {
   ta.value = ta.value.trim() ? ta.value.trim() + '\n1200\n1230' : '1200\n1230';
 }
 
-function parseZeiten() {
+function parseTokens() {
   return document.getElementById('timeInputs').value.trim()
     .split(/\s+/)
     .map(z => z.replace(/:/g, '').trim())
-    .filter(z => /^\d{4}(\d{2})?$/.test(z))
-    .map(z => {
-      const h = parseInt(z.substring(0, 2), 10);
-      const m = parseInt(z.substring(2, 4), 10);
-      const s = z.length === 6 ? parseInt(z.substring(4, 6), 10) : 0;
-      return h * 3600 + m * 60 + s;
-    });
+    .filter(z => /^\d{4}(\d{2})?$/.test(z));
+}
+
+function tokenToSek(z) {
+  const h = parseInt(z.substring(0, 2), 10);
+  const m = parseInt(z.substring(2, 4), 10);
+  const s = z.length === 6 ? parseInt(z.substring(4, 6), 10) : 0;
+  return h * 3600 + m * 60 + s;
+}
+
+function sekToToken(sek) {
+  const pad = n => String(n).padStart(2, '0');
+  const h = Math.floor(sek / 3600), m = Math.floor((sek % 3600) / 60), s = sek % 60;
+  return pad(h) + pad(m) + (s ? pad(s) : '');
+}
+
+function parseZeiten() {
+  return parseTokens().map(tokenToSek);
+}
+
+// Der Arbeitgeber zieht pro 7h eine halbe Stunde Pause ab. Ist die Pause kürzer,
+// wird das Wiedereinstempeln nach hinten geschoben, bis die Pause 30 Min dauert.
+const MIN_PAUSE_SEK = 30 * 60;
+
+function pausenkorrektur() {
+  const hint = document.getElementById('pause-hint');
+  const tokens = parseTokens();
+  const sek = tokens.map(tokenToSek);
+
+  let kuerzeste = -1, laengsteLuecke = -1;
+  for (let i = 1; i + 1 < sek.length; i += 2) {
+    const luecke = sek[i + 1] - sek[i];
+    if (luecke < 0) continue;
+    if (luecke >= MIN_PAUSE_SEK) {
+      hint.textContent = 'Es gibt bereits eine Pause von mindestens 30 Min – nichts zu korrigieren.';
+      return;
+    }
+    if (luecke > laengsteLuecke) { laengsteLuecke = luecke; kuerzeste = i; }
+  }
+  if (kuerzeste === -1) {
+    hint.textContent = 'Keine Pause gefunden – dafür braucht es ein Aus- und ein Wiedereinstempeln.';
+    return;
+  }
+
+  const ausSek = sek[kuerzeste];
+  const altEin = sek[kuerzeste + 1];
+  let neuEin = ausSek + MIN_PAUSE_SEK;
+  const naechstesAus = sek[kuerzeste + 2];
+  if (naechstesAus !== undefined) neuEin = Math.min(neuEin, naechstesAus);
+
+  const hm = s => `${String(Math.floor(s / 3600)).padStart(2, '0')}:${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`;
+  tokens[kuerzeste + 1] = sekToToken(neuEin);
+  document.getElementById('timeInputs').value = tokens.join('\n');
+  berechneArbeitszeit();
+  hint.textContent = `Pause ${hm(ausSek)}–${hm(altEin)} (${Math.round(laengsteLuecke / 60)} Min) auf ${Math.round((neuEin - ausSek) / 60)} Min erweitert: Wiedereinstempeln jetzt ${hm(neuEin)}.`;
+}
+
+// Öffnet ein kleines Popup nur mit der Tageszeit und schliesst dieses Fenster
+// (schliessen klappt nur, wenn es per Skript/Bookmarklet geöffnet wurde).
+function nurZeitAnzeigen() {
+  const hint = document.getElementById('pause-hint');
+  if (document.getElementById('timeInputs').value.trim()) berechneArbeitszeit();
+  const popup = window.open('zeit.html', 'arbeitszeit-popup', 'popup=yes,width=260,height=130');
+  if (!popup) {
+    hint.textContent = 'Das Popup wurde vom Browser blockiert – bitte Popups für diese Seite erlauben.';
+    return;
+  }
+  window.close();
+  setTimeout(() => {
+    if (!window.closed) hint.textContent = 'Dieses Fenster wurde nicht per Skript geöffnet und kann nicht automatisch geschlossen werden – bitte manuell schliessen.';
+  }, 300);
 }
 
 function berechneArbeitszeit() {
@@ -372,7 +443,7 @@ function startLiveUpdate(bisherSekunden, startSekunden) {
   liveInterval = setInterval(() => {
     const now = new Date();
     const jetztSek = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
-    const aktuell = bisherSekunden + (jetztSek - startSekunden);
+    const aktuell = bisherSekunden + Math.max(0, jetztSek - startSekunden);
     const h = Math.floor(aktuell / 3600);
     const m = Math.floor((aktuell % 3600) / 60);
     const s = Math.floor(aktuell % 60);
