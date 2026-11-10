@@ -176,8 +176,16 @@
       position: relative;
       width: 100px; height: 85px;
       overflow: hidden;
-      filter: drop-shadow(0 4px 16px rgba(79,127,255,0.3));
+      filter: blur(12px) drop-shadow(0 4px 16px rgba(79,127,255,0.3));
+      cursor: pointer;
+      transition: filter 0.5s ease;
     }
+    #img-wrap.revealed {
+      filter: drop-shadow(0 4px 16px rgba(79,127,255,0.3));
+      cursor: default;
+    }
+    .diamond-hint { font-size: 0.72rem; color: var(--muted); text-align: center; }
+    .diamond-hint.hidden { display: none; }
     #img-wrap img { position: absolute; width: 100%; height: 100%; object-fit: cover; }
     #color { z-index: 2; clip-path: inset(100% 0px 0px 0px); }
     .bw { z-index: 1; filter: var(--bw-filter); }
@@ -252,7 +260,7 @@
   <div class="card" id="diamond-card" style="display:none">
     <div class="diamond-section">
       <div class="diamond-title">&#128142; Belohnung</div>
-      <div id="img-wrap">
+      <div id="img-wrap" role="button" tabindex="0" aria-label="Diamant aufdecken" onclick="revealDiamond()" onkeydown="if(event.key==='Enter'||event.key===' ')revealDiamond()">
         <img src="diamant-gold-10.png" class="diamant-gold" id="diamant-gold-10">
         <img src="diamant-gold-9.png"  class="diamant-gold" id="diamant-gold-9">
         <img src="diamant-gold-8.png"  class="diamant-gold" id="diamant-gold-8">
@@ -266,6 +274,7 @@
         <img src="diamant.png" id="color">
         <img src="diamant.png" class="bw">
       </div>
+      <div class="diamond-hint" id="diamond-hint">Zum Aufdecken anklicken</div>
       <div class="diamond-caption" id="diamond-caption">Diamant freigeschaltet!</div>
     </div>
   </div>
@@ -416,6 +425,11 @@ function setProgress(sekunden) {
   } else {
     ferienWrap.style.display = 'none';
   }
+}
+
+function revealDiamond() {
+  document.getElementById('img-wrap').classList.add('revealed');
+  document.getElementById('diamond-hint').classList.add('hidden');
 }
 
 function updateDiamond(aktuell) {
