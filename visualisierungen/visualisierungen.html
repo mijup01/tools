@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Visualisierungen</title>
+  <script src="../theme.js"></script>
+  <style>
+    :root {
+      --bg: #f0f2f5;
+      --card: #fff;
+      --border: #e4e6eb;
+      --text: #1a1a2e;
+      --text-secondary: #444;
+      --muted: #999;
+      --very-muted: #ccc;
+      --input-bg: #f7f8fa;
+      --progress-track: #f0f2f5;
+      --shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    [data-theme="dark"] {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --border: #2a2d3a;
+      --text: #e0e0e0;
+      --text-secondary: #c8c8d0;
+      --muted: #555;
+      --very-muted: #3a3d4a;
+      --input-bg: #0f1117;
+      --progress-track: #0f1117;
+      --shadow: none;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 32px 16px;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .container { max-width: 560px; margin: 0 auto; }
+
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .back-link { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+    .back-link:hover { color: var(--text); }
+    h1 { font-size: 1.5rem; font-weight: 600; color: var(--text); letter-spacing: -0.02em; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    .card-label {
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 12px;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 1.1rem;
+      padding: 12px 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus { border-color: #4f7fff; }
+    input[type="text"]::placeholder { color: var(--very-muted); }
+
+    .field-hint { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+    .field-hint a { color: #4f7fff; text-decoration: none; }
+    .field-hint a:hover { text-decoration: underline; }
+    .error { color: #e53e3e; }
+
+    .summary { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+    .summary-days { font-size: 2.4rem; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+    .summary-unit { font-size: 1rem; color: var(--text-secondary); }
+    .summary-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
+
+    .bars { display: flex; flex-direction: column; gap: 8px; }
+    .bar-row { display: flex; align-items: center; gap: 10px; }
+    .bar-label { width: 52px; flex-shrink: 0; font-size: 0.75rem; color: var(--muted); }
+    .bar-track {
+      flex: 1; height: 18px;
+      background: var(--progress-track);
+      border: 1px solid var(--border);
+      border-radius: 99px; overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f7fff, #7c4dff); }
+    .bar-fill.partial { background: linear-gradient(90deg, #f59e0b, #ef4444); }
+    .bar-value { width: 52px; flex-shrink: 0; text-align: right; font-size: 0.78rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+
+    .empty-state { color: var(--very-muted); font-size: 0.9rem; text-align: center; padding: 8px 0; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <a class="back-link" href="../index.html">&#8592; Tools</a>
+    <h1>Visualisierungen</h1>
+  </header>
+
+  <div class="card">
+    <div class="card-label">Überzeit</div>
+    <input type="text" id="overtime" inputmode="decimal" autocomplete="off" placeholder="z.B. 12 oder 12.5 oder 12:30">
+    <div class="field-hint" id="field-hint"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Überzeit in Tagen</div>
+    <div id="result"><div class="empty-state">Überzeit eingeben, um die Tage zu sehen</div></div>
+  </div>
+</div>
+
+<script>
+  function readCookie(name, fallback) {
+    const found = document.cookie.split(';').map(c => c.trim()).find(c => c.startsWith(name + '='));
+    return found ? decodeURIComponent(found.slice(name.length + 1)) : fallback;
+  }
+
+  const TAGESSTUNDEN = parseFloat(readCookie('standardstunden', '8.3')) || 8.3;
+  const MAX_STUNDEN = 5000;
+
+  document.getElementById('field-hint').innerHTML =
+    `Tägliche Arbeitszeit: <strong>${TAGESSTUNDEN}h</strong> (aus den <a href="../einstellungen/einstellungen.html">Einstellungen</a>). Eingabe als Dezimalzahl oder Stunden:Minuten.`;
+
+  // "12", "12.5", "12,5" oder "12:30" -> Stunden als Zahl; null = ungültig
+  function parseStunden(text) {
+    const t = text.trim().replace(',', '.');
+    const hm = t.match(/^(\d+):(\d{1,2})$/);
+    if (hm) return Number(hm[1]) + Number(hm[2]) / 60;
+    if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
+    return null;
+  }
+
+  const fmt = n => String(+n.toFixed(2));
+
+  function render() {
+    const input = document.getElementById('overtime');
+    const hint = document.getElementById('field-hint');
+    const result = document.getElementById('result');
+    const text = input.value;
+
+    hint.classList.remove('error');
+    if (!text.trim()) {
+      result.innerHTML = '<div class="empty-state">Überzeit eingeben, um die Tage zu sehen</div>';
+      return;
+    }
+
+    const stunden = parseStunden(text);
+    if (stunden === null || stunden > MAX_STUNDEN) {
+      hint.classList.add('error');
+      result.innerHTML = '<div class="empty-state">Bitte eine gültige Überzeit eingeben (z.B. 12, 12.5 oder 12:30)</div>';
+      return;
+    }
+
+    const tage = stunden / TAGESSTUNDEN;
+    const volle = Math.floor(tage + 1e-9);
+    const rest = tage - volle;
+    const hatRest = rest > 1e-6;
+
+    let html = `<div class="summary"><span class="summary-days">${fmt(tage)}</span><span class="summary-unit">Tage</span></div>` +
+               `<div class="summary-sub">${fmt(stunden)}h Überzeit ÷ ${TAGESSTUNDEN}h pro Tag</div><div class="bars">`;
+
+    for (let i = 1; i <= volle; i++) {
+      html += `<div class="bar-row"><span class="bar-label">Tag ${i}</span>` +
+              `<div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>` +
+              `<span class="bar-value">${fmt(TAGESSTUNDEN)}h</span></div>`;
+    }
+    if (hatRest) {
+      html += `<div class="bar-row"><span class="bar-label">Tag ${volle + 1}</span>` +
+              `<div class="bar-track"><div class="bar-fill partial" style="width:${(rest * 100).toFixed(1)}%"></div></div>` +
+              `<span class="bar-value">${fmt(rest * TAGESSTUNDEN)}h</span></div>`;
+    }
+    if (!volle && !hatRest) {
+      html += '<div class="empty-state">Keine Überzeit</div>';
+    }
+    result.innerHTML = html + '</div>';
+  }
+
+  document.getElementById('overtime').addEventListener('input', render);
+</script>
+</body>
+</html>
