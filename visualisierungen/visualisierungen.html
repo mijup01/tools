@@ -113,7 +113,7 @@
 
   <div class="card">
     <div class="card-label">Überzeit</div>
-    <input type="text" id="overtime" inputmode="decimal" autocomplete="off" placeholder="z.B. 12 oder 12.5 oder 12:30">
+    <input type="text" id="overtime" autocomplete="off" placeholder="z.B. 11.12 oder 4 6 1">
     <div class="field-hint" id="field-hint"></div>
   </div>
 
@@ -133,15 +133,17 @@
   const MAX_STUNDEN = 5000;
 
   document.getElementById('field-hint').innerHTML =
-    `Tägliche Arbeitszeit: <strong>${TAGESSTUNDEN}h</strong> (aus den <a href="../einstellungen/einstellungen.html">Einstellungen</a>). Eingabe als Dezimalzahl oder Stunden:Minuten.`;
+    `Tägliche Arbeitszeit: <strong>${TAGESSTUNDEN}h</strong> (aus den <a href="../einstellungen/einstellungen.html">Einstellungen</a>). Eingabe im Format 11.12 (Punkt als Trenner). Mehrere Werte mit Leerzeichen werden zusammengerechnet, z.B. 4 6 1.`;
 
-  // "12", "12.5", "12,5" oder "12:30" -> Stunden als Zahl; null = ungültig
+  // "11.12" oder "4 6 1" (Werte mit Leerzeichen) -> { summe, teile }; null = ungültig
   function parseStunden(text) {
-    const t = text.trim().replace(',', '.');
-    const hm = t.match(/^(\d+):(\d{1,2})$/);
-    if (hm) return Number(hm[1]) + Number(hm[2]) / 60;
-    if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
-    return null;
+    const teile = text.trim().split(/\s+/);
+    let summe = 0;
+    for (const t of teile) {
+      if (!/^\d+(\.\d+)?$/.test(t)) return null;
+      summe += Number(t);
+    }
+    return { summe, teile };
   }
 
   const fmt = n => String(+n.toFixed(2));
@@ -158,12 +160,14 @@
       return;
     }
 
-    const stunden = parseStunden(text);
-    if (stunden === null || stunden > MAX_STUNDEN) {
+    const eingabe = parseStunden(text);
+    if (eingabe === null || eingabe.summe > MAX_STUNDEN) {
       hint.classList.add('error');
-      result.innerHTML = '<div class="empty-state">Bitte eine gültige Überzeit eingeben (z.B. 12, 12.5 oder 12:30)</div>';
+      result.innerHTML = '<div class="empty-state">Bitte Stunden im Format 11.12 eingeben (mehrere Werte mit Leerzeichen)</div>';
       return;
     }
+    const stunden = eingabe.summe;
+    const summand = eingabe.teile.length > 1 ? `${eingabe.teile.join(' + ')} = ` : '';
 
     const tage = stunden / TAGESSTUNDEN;
     const volle = Math.floor(tage + 1e-9);
@@ -171,7 +175,7 @@
     const hatRest = rest > 1e-6;
 
     let html = `<div class="summary"><span class="summary-days">${fmt(tage)}</span><span class="summary-unit">Tage</span></div>` +
-               `<div class="summary-sub">${fmt(stunden)}h Überzeit ÷ ${TAGESSTUNDEN}h pro Tag</div><div class="bars">`;
+               `<div class="summary-sub">${summand}${fmt(stunden)}h Überzeit ÷ ${TAGESSTUNDEN}h pro Tag</div><div class="bars">`;
 
     for (let i = 1; i <= volle; i++) {
       html += `<div class="bar-col"><span class="bar-value">${fmt(TAGESSTUNDEN)}h</span>` +
@@ -189,7 +193,17 @@
     result.innerHTML = html + '</div>';
   }
 
-  document.getElementById('overtime').addEventListener('input', render);
+  // Nur Ziffern, Punkt und Leerzeichen sind erlaubt. Eine Eingabe/Einfügung mit anderen
+  // Zeichen (z.B. "12:30" oder "12,5") wird komplett abgelehnt statt still verändert.
+  let letzterGueltigerWert = '';
+  document.getElementById('overtime').addEventListener('input', e => {
+    if (/[^\d. ]/.test(e.target.value)) {
+      e.target.value = letzterGueltigerWert;
+    } else {
+      letzterGueltigerWert = e.target.value;
+    }
+    render();
+  });
 </script>
 </body>
 </html>
