@@ -77,6 +77,19 @@
     input[type="text"]:focus { border-color: #4f7fff; }
     input[type="text"]::placeholder { color: var(--very-muted); }
 
+    .input-row { display: flex; gap: 8px; align-items: stretch; }
+    .clear-btn {
+      flex-shrink: 0;
+      width: 48px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .clear-btn:hover { border-color: #e53e3e; background: rgba(229,62,62,0.08); }
+
     .field-hint { font-size: 0.78rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
     .field-hint a { color: #4f7fff; text-decoration: none; }
     .field-hint a:hover { text-decoration: underline; }
@@ -113,7 +126,10 @@
 
   <div class="card">
     <div class="card-label">Überzeit</div>
-    <input type="text" id="overtime" autocomplete="off" placeholder="z.B. 11.12 oder 4 6 1">
+    <div class="input-row">
+      <input type="text" id="overtime" autocomplete="off" placeholder="z.B. 11.12 oder 4 6 1">
+      <button type="button" class="clear-btn" id="clear-btn" title="Eingabe löschen" aria-label="Eingabe löschen">&#128465;</button>
+    </div>
     <div class="field-hint" id="field-hint"></div>
   </div>
 
@@ -195,15 +211,40 @@
 
   // Nur Ziffern, Punkt und Leerzeichen sind erlaubt. Eine Eingabe/Einfügung mit anderen
   // Zeichen (z.B. "12:30" oder "12,5") wird komplett abgelehnt statt still verändert.
+  const COOKIE_NAME = 'visualisierung_ueberzeit';
+  const overtimeInput = document.getElementById('overtime');
   let letzterGueltigerWert = '';
-  document.getElementById('overtime').addEventListener('input', e => {
+
+  function saveInput(value) {
+    document.cookie = value
+      ? `${COOKIE_NAME}=${encodeURIComponent(value)};path=/;max-age=${60 * 60 * 24 * 365}`
+      : `${COOKIE_NAME}=;path=/;max-age=0`;
+  }
+
+  overtimeInput.addEventListener('input', e => {
     if (/[^\d. ]/.test(e.target.value)) {
       e.target.value = letzterGueltigerWert;
     } else {
       letzterGueltigerWert = e.target.value;
     }
+    saveInput(letzterGueltigerWert);
     render();
   });
+
+  document.getElementById('clear-btn').addEventListener('click', () => {
+    overtimeInput.value = '';
+    letzterGueltigerWert = '';
+    saveInput('');
+    render();
+    overtimeInput.focus();
+  });
+
+  const gespeichert = readCookie(COOKIE_NAME, '');
+  if (/^[\d. ]+$/.test(gespeichert)) {
+    overtimeInput.value = gespeichert;
+    letzterGueltigerWert = gespeichert;
+    render();
+  }
 </script>
 </body>
 </html>
