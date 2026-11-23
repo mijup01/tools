@@ -87,18 +87,19 @@
     .summary-unit { font-size: 1rem; color: var(--text-secondary); }
     .summary-sub { font-size: 0.82rem; color: var(--muted); margin-bottom: 20px; }
 
-    .bars { display: flex; flex-direction: column; gap: 8px; }
-    .bar-row { display: flex; align-items: center; gap: 10px; }
-    .bar-label { width: 52px; flex-shrink: 0; font-size: 0.75rem; color: var(--muted); }
+    .bars { display: flex; flex-wrap: wrap; gap: 14px; }
+    .bar-col { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 48px; }
     .bar-track {
-      flex: 1; height: 18px;
+      width: 100%; height: 180px;
       background: var(--progress-track);
       border: 1px solid var(--border);
-      border-radius: 99px; overflow: hidden;
+      border-radius: 10px; overflow: hidden;
+      display: flex; align-items: flex-end;
     }
-    .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #4f7fff, #7c4dff); }
-    .bar-fill.partial { background: linear-gradient(90deg, #f59e0b, #ef4444); }
-    .bar-value { width: 52px; flex-shrink: 0; text-align: right; font-size: 0.78rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .bar-fill { width: 100%; border-radius: 8px 8px 0 0; background: linear-gradient(0deg, #059669, #34d399); }
+    .bar-fill.partial { background: linear-gradient(0deg, #d97706, #fcd34d); }
+    .bar-label { font-size: 0.72rem; color: var(--muted); white-space: nowrap; }
+    .bar-value { font-size: 0.78rem; font-weight: 600; color: var(--text-secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
     .empty-state { color: var(--very-muted); font-size: 0.9rem; text-align: center; padding: 8px 0; }
   </style>
@@ -173,14 +174,14 @@
                `<div class="summary-sub">${fmt(stunden)}h Überzeit ÷ ${TAGESSTUNDEN}h pro Tag</div><div class="bars">`;
 
     for (let i = 1; i <= volle; i++) {
-      html += `<div class="bar-row"><span class="bar-label">Tag ${i}</span>` +
-              `<div class="bar-track"><div class="bar-fill" style="width:100%"></div></div>` +
-              `<span class="bar-value">${fmt(TAGESSTUNDEN)}h</span></div>`;
+      html += `<div class="bar-col"><span class="bar-value">${fmt(TAGESSTUNDEN)}h</span>` +
+              `<div class="bar-track"><div class="bar-fill" style="height:100%"></div></div>` +
+              `<span class="bar-label">Tag ${i}</span></div>`;
     }
     if (hatRest) {
-      html += `<div class="bar-row"><span class="bar-label">Tag ${volle + 1}</span>` +
-              `<div class="bar-track"><div class="bar-fill partial" style="width:${(rest * 100).toFixed(1)}%"></div></div>` +
-              `<span class="bar-value">${fmt(rest * TAGESSTUNDEN)}h</span></div>`;
+      html += `<div class="bar-col"><span class="bar-value">${fmt(rest * TAGESSTUNDEN)}h</span>` +
+              `<div class="bar-track"><div class="bar-fill partial" style="height:${(rest * 100).toFixed(1)}%"></div></div>` +
+              `<span class="bar-label">Tag ${volle + 1}</span></div>`;
     }
     if (!volle && !hatRest) {
       html += '<div class="empty-state">Keine Überzeit</div>';
